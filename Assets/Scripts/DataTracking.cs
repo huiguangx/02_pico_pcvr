@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections;
+using Unity.XR.PXR;
 
 namespace DataTracking
 {
@@ -57,6 +58,9 @@ namespace DataTracking
 
         private void Awake()
             {
+                PXR_Manager.EnableVideoSeeThrough = true;
+                Debug.Log("✅ 11111" + JsonUtility.ToJson(PXR_Manager.EnableVideoSeeThrough));
+                
                 // 初始化按钮数组
                 _leftButtons = new ButtonState[7];
                 _rightButtons = new ButtonState[7];
