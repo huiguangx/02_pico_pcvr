@@ -1,24 +1,585 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Events;
+using UnityEngine.EventSystems;
 
-public class UIController : MonoBehaviour {
+/// <summary>
+/// UI控制器 - 完全通过代码生成 UI，支持 XR 射线交互
+/// 使用方法：在场景中创建一个空 GameObject，挂载此脚本即可
+/// </summary>
+public class UIController : MonoBehaviour
+{
+    [Header("Canvas 配置")]
+    [Tooltip("UI距离相机的距离")]
+    public float distanceFromCamera = 3f;
 
-    // Start is called before the first frame update
-    public Text uiText; //待修改的文本
-    public void OnAddButtonClick()
+    [Tooltip("Canvas 宽度")]
+    public float canvasWidth = 900f;
+
+    [Tooltip("Canvas 高度")]
+    public float canvasHeight = 600f;
+
+    [Tooltip("Canvas 缩放（调整整体大小）")]
+    public float canvasScale = 0.005f;
+
+    [Header("Button 配置")]
+    [Tooltip("按钮宽度（0 = 自动填充容器宽度）")]
+    public float buttonWidth = 0f;
+
+    [Tooltip("按钮高度")]
+    public float buttonHeight = 100f;
+
+    [Tooltip("按钮之间的间距")]
+    public float buttonSpacing = 20f;
+
+    [Header("其他配置")]
+    [Tooltip("是否在启动时显示窗口")]
+    public bool showOnStart = true;
+
+    // 内部引用
+    private Canvas canvas;
+    private GameObject modalWindow;
+    private Text titleText;
+    private Transform buttonsContainer;
+    private List<Button> buttons = new List<Button>();
+    private Camera mainCamera;
+
+    // 用于检测参数变化
+    private float lastCanvasWidth;
+    private float lastCanvasHeight;
+    private float lastCanvasScale;
+    private float lastDistanceFromCamera;
+    private float lastButtonWidth;
+    private float lastButtonHeight;
+    private float lastButtonSpacing;
+
+    private void Awake()
     {
-        Debug.Log("✅ 点击成功");
-        // string text = uiText.text;  //获取文本的值
-        // int num=Int32.Parse(text);  //将文本转化为整数
-        // uiText.text = num + 1 + ""; //让整数+1 ，然后在+""
+        Debug.Log("🔍 UIController Awake() 开始");
+        mainCamera = Camera.main;
+
+        if (mainCamera == null)
+        {
+            Debug.LogError("❌ 找不到 Main Camera！");
+        }
+        else
+        {
+            Debug.Log($"✅ 找到 Main Camera: {mainCamera.name}");
+        }
+
+        EnsureEventSystem();
     }
-    public void ONDecreateButtonClick()
+
+    private void Start()
     {
-        string text=uiText.text;
-        int num=Int32.Parse(text);
-        uiText.text = num - 1 + "";
+        Debug.Log("🔍 UIController Start() 开始");
+        CreateUI();
+
+        // 初始化参数缓存
+        lastCanvasWidth = canvasWidth;
+        lastCanvasHeight = canvasHeight;
+        lastCanvasScale = canvasScale;
+        lastDistanceFromCamera = distanceFromCamera;
+        lastButtonWidth = buttonWidth;
+        lastButtonHeight = buttonHeight;
+        lastButtonSpacing = buttonSpacing;
+
+        if (!showOnStart)
+        {
+            HideModal();
+        }
+    }
+
+    private void Update()
+    {
+        // 检测 Canvas 参数变化
+        if (canvas != null)
+        {
+            bool needUpdateCanvas = false;
+            bool needUpdatePosition = false;
+            bool needUpdateButtons = false;
+
+            // 检测 Canvas 尺寸变化
+            if (lastCanvasWidth != canvasWidth || lastCanvasHeight != canvasHeight)
+            {
+                needUpdateCanvas = true;
+                lastCanvasWidth = canvasWidth;
+                lastCanvasHeight = canvasHeight;
+            }
+
+            // 检测 Canvas 缩放变化
+            if (lastCanvasScale != canvasScale)
+            {
+                canvas.transform.localScale = Vector3.one * canvasScale;
+                lastCanvasScale = canvasScale;
+                Debug.Log($"🔄 Canvas 缩放已更新: {canvasScale}");
+            }
+
+            // 检测距离变化
+            if (lastDistanceFromCamera != distanceFromCamera)
+            {
+                needUpdatePosition = true;
+                lastDistanceFromCamera = distanceFromCamera;
+            }
+
+            // 检测按钮参数变化
+            if (lastButtonWidth != buttonWidth || lastButtonHeight != buttonHeight || lastButtonSpacing != buttonSpacing)
+            {
+                needUpdateButtons = true;
+                lastButtonWidth = buttonWidth;
+                lastButtonHeight = buttonHeight;
+                lastButtonSpacing = buttonSpacing;
+            }
+
+            // 执行更新
+            if (needUpdateCanvas)
+            {
+                UpdateCanvasSize();
+            }
+
+            if (needUpdatePosition)
+            {
+                UpdateUIPosition();
+            }
+
+            if (needUpdateButtons)
+            {
+                UpdateButtons();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 更新 Canvas 尺寸
+    /// </summary>
+    private void UpdateCanvasSize()
+    {
+        if (canvas != null)
+        {
+            RectTransform canvasRect = canvas.GetComponent<RectTransform>();
+            canvasRect.sizeDelta = new Vector2(canvasWidth, canvasHeight);
+            Debug.Log($"🔄 Canvas 尺寸已更新: {canvasWidth} x {canvasHeight}");
+        }
+    }
+
+    /// <summary>
+    /// 更新 UI 位置
+    /// </summary>
+    private void UpdateUIPosition()
+    {
+        if (canvas != null && mainCamera != null)
+        {
+            Vector3 cameraPos = mainCamera.transform.position;
+            Vector3 cameraForward = mainCamera.transform.forward;
+            canvas.transform.position = cameraPos + cameraForward * distanceFromCamera;
+            canvas.transform.LookAt(cameraPos);
+            canvas.transform.Rotate(0, 180, 0);
+            Debug.Log($"🔄 UI 位置已更新，距离: {distanceFromCamera}");
+        }
+    }
+
+    /// <summary>
+    /// 更新所有按钮的尺寸和布局
+    /// </summary>
+    private void UpdateButtons()
+    {
+        if (buttonsContainer == null) return;
+
+        // 更新布局组件
+        VerticalLayoutGroup layout = buttonsContainer.GetComponent<VerticalLayoutGroup>();
+        if (layout != null)
+        {
+            layout.spacing = buttonSpacing;
+            layout.childControlWidth = (buttonWidth == 0);
+            layout.childForceExpandWidth = (buttonWidth == 0);
+        }
+
+        // 更新每个按钮的尺寸
+        foreach (Button btn in buttons)
+        {
+            if (btn != null)
+            {
+                RectTransform rect = btn.GetComponent<RectTransform>();
+                if (buttonWidth > 0)
+                {
+                    rect.sizeDelta = new Vector2(buttonWidth, buttonHeight);
+                }
+                else
+                {
+                    rect.sizeDelta = new Vector2(0, buttonHeight);
+                }
+            }
+        }
+
+        Debug.Log($"🔄 按钮已更新 - 宽度: {buttonWidth}, 高度: {buttonHeight}, 间距: {buttonSpacing}");
+    }
+
+    /// <summary>
+    /// 确保场景中有 EventSystem
+    /// </summary>
+    private void EnsureEventSystem()
+    {
+        EventSystem eventSystem = FindObjectOfType<EventSystem>();
+        if (eventSystem == null)
+        {
+            Debug.Log("🔍 创建 EventSystem");
+            GameObject esObj = new GameObject("EventSystem");
+            esObj.AddComponent<EventSystem>();
+            esObj.AddComponent<StandaloneInputModule>();
+            Debug.Log("✅ EventSystem 已创建");
+        }
+        else
+        {
+            Debug.Log($"✅ EventSystem 已存在: {eventSystem.name}");
+        }
+    }
+
+    /// <summary>
+    /// 创建整个 UI 系统
+    /// </summary>
+    private void CreateUI()
+    {
+        Debug.Log("🔍 开始创建 UI");
+
+        // 1. 创建 Canvas
+        CreateCanvas();
+
+        // 2. 创建模态窗口
+        CreateModalWindow();
+
+        // 3. 创建标题
+        CreateTitle();
+
+        // 4. 创建按钮容器
+        CreateButtonsContainer();
+
+        // 5. 添加默认按钮
+        AddDefaultButtons();
+
+        Debug.Log("✅ UI 系统创建完成");
+    }
+
+    /// <summary>
+    /// 创建 Canvas
+    /// </summary>
+    private void CreateCanvas()
+    {
+        Debug.Log("🔍 创建 Canvas");
+
+        GameObject canvasObj = new GameObject("UICanvas");
+        canvasObj.transform.SetParent(transform);
+
+        canvas = canvasObj.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.WorldSpace;
+
+        // 设置 Canvas 位置（在相机前方）
+        if (mainCamera != null)
+        {
+            Vector3 cameraPos = mainCamera.transform.position;
+            Vector3 cameraForward = mainCamera.transform.forward;
+            canvasObj.transform.position = cameraPos + cameraForward * distanceFromCamera;
+            canvasObj.transform.LookAt(cameraPos);
+            canvasObj.transform.Rotate(0, 180, 0);
+            Debug.Log($"✅ Canvas 位置: {canvasObj.transform.position}");
+        }
+
+        // 设置 Canvas 尺寸和缩放
+        RectTransform canvasRect = canvas.GetComponent<RectTransform>();
+        canvasRect.sizeDelta = new Vector2(canvasWidth, canvasHeight);
+        canvasObj.transform.localScale = Vector3.one * canvasScale;
+
+        // 添加 CanvasScaler
+        CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
+        scaler.dynamicPixelsPerUnit = 10;
+
+        // 尝试添加 TrackedDeviceGraphicRaycaster（用于 XR）
+        var raycasterType = System.Type.GetType("UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster, Unity.XR.Interaction.Toolkit");
+        if (raycasterType != null)
+        {
+            canvasObj.AddComponent(raycasterType);
+            Debug.Log("✅ 添加了 TrackedDeviceGraphicRaycaster");
+        }
+        else
+        {
+            canvasObj.AddComponent<GraphicRaycaster>();
+            Debug.LogWarning("⚠️ 使用标准 GraphicRaycaster");
+        }
+
+        Debug.Log($"✅ Canvas 创建完成");
+    }
+
+    /// <summary>
+    /// 创建模态窗口背景
+    /// </summary>
+    private void CreateModalWindow()
+    {
+        Debug.Log("🔍 创建 ModalWindow");
+
+        modalWindow = new GameObject("ModalWindow");
+        modalWindow.transform.SetParent(canvas.transform, false);
+
+        RectTransform rect = modalWindow.AddComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.sizeDelta = Vector2.zero;
+        rect.anchoredPosition = Vector2.zero;
+
+        Image bgImage = modalWindow.AddComponent<Image>();
+        bgImage.color = new Color(0.15f, 0.15f, 0.15f, 1f); // 深灰色不透明
+
+        Debug.Log($"✅ ModalWindow 创建完成，Active: {modalWindow.activeSelf}");
+    }
+
+    /// <summary>
+    /// 创建标题栏
+    /// </summary>
+    private void CreateTitle()
+    {
+        Debug.Log("🔍 创建 Title");
+
+        GameObject titleObj = new GameObject("Title");
+        titleObj.transform.SetParent(modalWindow.transform, false);
+
+        RectTransform rect = titleObj.AddComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0, 1);
+        rect.anchorMax = new Vector2(1, 1);
+        rect.pivot = new Vector2(0.5f, 1);
+        rect.sizeDelta = new Vector2(0, 100);
+        rect.anchoredPosition = Vector2.zero;
+
+        Image bgImage = titleObj.AddComponent<Image>();
+        bgImage.color = new Color(0.1f, 0.1f, 0.1f, 1f);
+
+        // 创建标题文本
+        GameObject textObj = new GameObject("TitleText");
+        textObj.transform.SetParent(titleObj.transform, false);
+
+        RectTransform textRect = textObj.AddComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.sizeDelta = Vector2.zero;
+        textRect.anchoredPosition = Vector2.zero;
+
+        titleText = textObj.AddComponent<Text>();
+        titleText.text = "VR UI Test Window";
+        titleText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        titleText.fontSize = 48;
+        titleText.alignment = TextAnchor.MiddleCenter;
+        titleText.color = Color.white;
+        titleText.fontStyle = FontStyle.Bold;
+
+        Debug.Log($"✅ Title 创建完成，文本: {titleText.text}，字体: {titleText.font?.name}");
+    }
+
+    /// <summary>
+    /// 创建按钮容器
+    /// </summary>
+    private void CreateButtonsContainer()
+    {
+        Debug.Log("🔍 创建 ButtonsContainer");
+
+        if (modalWindow == null)
+        {
+            Debug.LogError("❌ modalWindow 为空！");
+            return;
+        }
+
+        GameObject containerObj = new GameObject("ButtonsContainer");
+        containerObj.transform.SetParent(modalWindow.transform, false);
+
+        RectTransform rect = containerObj.AddComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0, 0);
+        rect.anchorMax = new Vector2(1, 1);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.offsetMin = new Vector2(40, 40);   // 左、下边距
+        rect.offsetMax = new Vector2(-40, -120); // 右、上边距（为标题留空间）
+
+        buttonsContainer = containerObj.transform;
+
+        // 添加垂直布局
+        VerticalLayoutGroup layout = containerObj.AddComponent<VerticalLayoutGroup>();
+        layout.spacing = buttonSpacing;
+        layout.childAlignment = TextAnchor.MiddleCenter;
+        layout.childControlWidth = (buttonWidth == 0); // 如果 buttonWidth = 0，自动填充宽度
+        layout.childControlHeight = false;
+        layout.childForceExpandWidth = (buttonWidth == 0);
+        layout.childForceExpandHeight = false;
+
+        Debug.Log($"✅ ButtonsContainer 创建完成，Parent: {containerObj.transform.parent.name}");
+    }
+
+    /// <summary>
+    /// 添加默认按钮
+    /// </summary>
+    private void AddDefaultButtons()
+    {
+        Debug.Log("🔍 添加默认按钮");
+        AddButton("CONFIRM", OnConfirmClicked, new Color(0.2f, 0.6f, 1f));
+        AddButton("CANCEL", OnCancelClicked, new Color(0.7f, 0.7f, 0.7f));
+        AddButton("APPLY", OnApplyClicked, new Color(0.3f, 0.7f, 0.3f));
+    }
+
+    /// <summary>
+    /// 动态添加按钮
+    /// </summary>
+    public Button AddButton(string buttonText, UnityAction onClick, Color? buttonColor = null)
+    {
+        if (buttonsContainer == null)
+        {
+            Debug.LogError("❌ buttonsContainer 为空！");
+            return null;
+        }
+
+        Debug.Log($"🔍 创建按钮: {buttonText}");
+
+        GameObject buttonObj = new GameObject($"Button_{buttonText}");
+        buttonObj.transform.SetParent(buttonsContainer, false);
+
+        RectTransform rect = buttonObj.AddComponent<RectTransform>();
+
+        // 根据 buttonWidth 设置按钮尺寸
+        if (buttonWidth > 0)
+        {
+            rect.sizeDelta = new Vector2(buttonWidth, buttonHeight); // 固定宽高
+        }
+        else
+        {
+            rect.sizeDelta = new Vector2(0, buttonHeight); // 只设置高度，宽度由布局控制
+        }
+
+        // 先创建 Image 组件
+        Image bgImage = buttonObj.AddComponent<Image>();
+
+        Button button = buttonObj.AddComponent<Button>();
+
+        Color normalColor = buttonColor ?? new Color(0.2f, 0.6f, 1f);
+
+        // 设置按钮的 targetGraphic（非常重要！）
+        button.targetGraphic = bgImage;
+
+        // 显式设置 Transition 为 ColorTint（确保 hover 效果生效）
+        button.transition = Selectable.Transition.ColorTint;
+
+        ColorBlock colors = button.colors;
+        colors.normalColor = normalColor;
+        colors.highlightedColor = Color.Lerp(normalColor, Color.white, 0.4f); // hover 时变浅（混合白色）
+        colors.pressedColor = normalColor * 0.7f;                              // 点击时变深
+        colors.selectedColor = normalColor;
+        colors.fadeDuration = 0.15f; // 平滑过渡
+        button.colors = colors;
+
+        bgImage.color = normalColor;
+
+        Debug.Log($"🔍 按钮 {buttonText} - targetGraphic: {button.targetGraphic != null}, transition: {button.transition}, 尺寸: {rect.sizeDelta}");
+
+        // 添加 EventTrigger 来处理 hover 事件（额外的视觉反馈）
+        EventTrigger trigger = buttonObj.AddComponent<EventTrigger>();
+
+        // PointerEnter 事件
+        EventTrigger.Entry enterEntry = new EventTrigger.Entry();
+        enterEntry.eventID = EventTriggerType.PointerEnter;
+        enterEntry.callback.AddListener((data) => OnButtonHoverEnter(buttonObj, buttonText));
+        trigger.triggers.Add(enterEntry);
+
+        // PointerExit 事件
+        EventTrigger.Entry exitEntry = new EventTrigger.Entry();
+        exitEntry.eventID = EventTriggerType.PointerExit;
+        exitEntry.callback.AddListener((data) => OnButtonHoverExit(buttonObj, buttonText));
+        trigger.triggers.Add(exitEntry);
+
+        // 创建按钮文本
+        GameObject textObj = new GameObject("Text");
+        textObj.transform.SetParent(buttonObj.transform, false);
+
+        RectTransform textRect = textObj.AddComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.sizeDelta = Vector2.zero;
+        textRect.anchoredPosition = Vector2.zero;
+
+        Text text = textObj.AddComponent<Text>();
+        text.text = buttonText;
+        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        text.fontSize = 36;
+        text.alignment = TextAnchor.MiddleCenter;
+        text.color = Color.white;
+        text.fontStyle = FontStyle.Bold;
+
+        button.onClick.AddListener(onClick);
+        buttons.Add(button);
+
+        Debug.Log($"✅ 按钮创建完成: {buttonText}");
+
+        return button;
+    }
+
+    /// <summary>
+    /// 按钮 Hover 进入事件
+    /// </summary>
+    private void OnButtonHoverEnter(GameObject buttonObj, string buttonText)
+    {
+        Debug.Log($"🎯 Hover 进入: {buttonText}");
+        // 可以在这里添加额外的视觉效果，比如缩放动画
+        // buttonObj.transform.localScale = Vector3.one * 1.05f;
+    }
+
+    /// <summary>
+    /// 按钮 Hover 退出事件
+    /// </summary>
+    private void OnButtonHoverExit(GameObject buttonObj, string buttonText)
+    {
+        Debug.Log($"🎯 Hover 退出: {buttonText}");
+        // buttonObj.transform.localScale = Vector3.one;
+    }
+
+    public void ShowModal(string title = "VR UI Test Window")
+    {
+        if (modalWindow != null)
+        {
+            modalWindow.SetActive(true);
+            if (titleText != null)
+            {
+                titleText.text = title;
+            }
+            Debug.Log($"✅ 显示模态窗口: {title}");
+        }
+    }
+
+    public void HideModal()
+    {
+        if (modalWindow != null)
+        {
+            modalWindow.SetActive(false);
+            Debug.Log("✅ 隐藏模态窗口");
+        }
+    }
+
+    private void OnConfirmClicked()
+    {
+        Debug.Log("✅✅✅ BUTTON CONFIRM 按钮被点击！");
+        // HideModal();
+    }
+
+    private void OnCancelClicked()
+    {
+        Debug.Log("❌❌❌ BUTTON CANCEL 按钮被点击！");
+        // HideModal();
+    }
+
+    private void OnApplyClicked()
+    {
+        Debug.Log("✔️✔️✔️ BUTTON APPLY 按钮被点击！");
+    }
+
+    private void OnDestroy()
+    {
+        foreach (Button btn in buttons)
+        {
+            if (btn != null)
+            {
+                btn.onClick.RemoveAllListeners();
+            }
+        }
     }
 }
