@@ -11,9 +11,9 @@ public class UIController : MonoBehaviour {
     public void OnAddButtonClick()
     {
         Debug.Log("✅ 点击成功");
-        string text = uiText.text;  //获取文本的值
-        int num=Int32.Parse(text);  //将文本转化为整数
-        uiText.text = num + 1 + ""; //让整数+1 ，然后在+""
+        // string text = uiText.text;  //获取文本的值
+        // int num=Int32.Parse(text);  //将文本转化为整数
+        // uiText.text = num + 1 + ""; //让整数+1 ，然后在+""
     }
     public void ONDecreateButtonClick()
     {

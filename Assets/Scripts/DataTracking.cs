@@ -315,7 +315,7 @@ namespace DataTracking
             data.timestamp = System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             string json = JsonUtility.ToJson(data, true);
-            Debug.Log("✅ 发送 VR 数据:\n" + json);
+       
             // 发送到服务器
             StartCoroutine(PostDataToServer(json));
         }
@@ -339,7 +339,7 @@ namespace DataTracking
             request.certificateHandler = new CustomCertificateHandler();
             request.disposeCertificateHandlerOnDispose = true;
 
-            Debug.Log("正在发送请求到:啊啊 " + serverUrl);
+            // Debug.Log("正在发送请求到: " + serverUrl);
             
             yield return request.SendWebRequest();
 
@@ -351,7 +351,7 @@ namespace DataTracking
             }
             else
             {
-                Debug.Log("成功发送VR数据到服务器. 响应代码: " + request.responseCode);
+                Debug.Log("成功发送VR数据到服务器. 响应代码: " + serverUrl + request.responseCode);
             }
 
             request.Dispose();
