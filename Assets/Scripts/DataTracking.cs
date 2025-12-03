@@ -394,7 +394,7 @@ namespace DataTracking
             }
             else
             {
-                Debug.Log("成功发送VR数据到服务器. 响应代码: " + serverUrl + request.responseCode);
+                // Debug.Log("成功发送VR数据到服务器. 响应代码: " + serverUrl + request.responseCode);
             }
 
             request.Dispose();
