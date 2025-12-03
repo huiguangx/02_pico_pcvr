@@ -38,6 +38,10 @@ public class UIController : MonoBehaviour
     [Tooltip("是否在启动时显示窗口")]
     public bool showOnStart = true;
 
+    [Header("服务器配置")]
+    [Tooltip("服务器基础地址 (如 https://192.168.1.100:5000)")]
+    public string serverBaseUrl = "https://localhost:5000";
+
     // 内部引用
     private Canvas canvas;
     private GameObject modalWindow;
@@ -63,24 +67,19 @@ public class UIController : MonoBehaviour
 
     private void Awake()
     {
-        Debug.Log("🔍 UIController Awake() 开始");
         mainCamera = Camera.main;
-
-        if (mainCamera == null)
-        {
-            Debug.LogError("❌ 找不到 Main Camera！");
-        }
-        else
-        {
-            Debug.Log($"✅ 找到 Main Camera: {mainCamera.name}");
-        }
-
         EnsureEventSystem();
     }
 
     private void Start()
     {
-        Debug.Log("🔍 UIController Start() 开始");
+        // 从 PlayerPrefs 加载服务器地址
+        if (PlayerPrefs.HasKey("ServerBaseUrl"))
+        {
+            serverBaseUrl = PlayerPrefs.GetString("ServerBaseUrl");
+            Debug.Log($"📥 从 PlayerPrefs 加载服务器地址: {serverBaseUrl}");
+        }
+
         CreateUI();
 
         // 初始化参数缓存
@@ -96,10 +95,10 @@ public class UIController : MonoBehaviour
         {
             HideModal();
         }
-        
+
         // 获取DataTracking实例
         dataTracking = FindObjectOfType<DataTracking.DataTracking>();
-        
+
         // 初始化输入框
         InitializeServerUrlInput();
     }
@@ -107,9 +106,9 @@ public class UIController : MonoBehaviour
     // 初始化服务器URL输入框
     private void InitializeServerUrlInput()
     {
-        if (dataTracking != null && serverUrlInputField != null)
+        if (serverUrlInputField != null)
         {
-            serverUrlInputField.text = dataTracking.serverUrl;
+            serverUrlInputField.text = serverBaseUrl;
         }
     }
 
@@ -135,7 +134,6 @@ public class UIController : MonoBehaviour
             {
                 canvas.transform.localScale = Vector3.one * canvasScale;
                 lastCanvasScale = canvasScale;
-                Debug.Log($"🔄 Canvas 缩放已更新: {canvasScale}");
             }
 
             // 检测距离变化
@@ -181,7 +179,6 @@ public class UIController : MonoBehaviour
         {
             RectTransform canvasRect = canvas.GetComponent<RectTransform>();
             canvasRect.sizeDelta = new Vector2(canvasWidth, canvasHeight);
-            Debug.Log($"🔄 Canvas 尺寸已更新: {canvasWidth} x {canvasHeight}");
         }
     }
 
@@ -197,7 +194,6 @@ public class UIController : MonoBehaviour
             canvas.transform.position = cameraPos + cameraForward * distanceFromCamera;
             canvas.transform.LookAt(cameraPos);
             canvas.transform.Rotate(0, 180, 0);
-            Debug.Log($"🔄 UI 位置已更新，距离: {distanceFromCamera}");
         }
     }
 
@@ -233,8 +229,6 @@ public class UIController : MonoBehaviour
                 }
             }
         }
-
-        Debug.Log($"🔄 按钮已更新 - 宽度: {buttonWidth}, 高度: {buttonHeight}, 间距: {buttonSpacing}");
     }
 
     /// <summary>
@@ -245,15 +239,9 @@ public class UIController : MonoBehaviour
         EventSystem eventSystem = FindObjectOfType<EventSystem>();
         if (eventSystem == null)
         {
-            Debug.Log("🔍 创建 EventSystem");
             GameObject esObj = new GameObject("EventSystem");
             esObj.AddComponent<EventSystem>();
             esObj.AddComponent<StandaloneInputModule>();
-            Debug.Log("✅ EventSystem 已创建");
-        }
-        else
-        {
-            Debug.Log($"✅ EventSystem 已存在: {eventSystem.name}");
         }
     }
 
@@ -262,8 +250,6 @@ public class UIController : MonoBehaviour
     /// </summary>
     private void CreateUI()
     {
-        Debug.Log("🔍 开始创建 UI");
-
         // 1. 创建 Canvas
         CreateCanvas();
 
@@ -281,8 +267,6 @@ public class UIController : MonoBehaviour
 
         // 6. 添加默认按钮
         AddDefaultButtons();
-
-        Debug.Log("✅ UI 系统创建完成");
     }
 
     /// <summary>
@@ -290,8 +274,6 @@ public class UIController : MonoBehaviour
     /// </summary>
     private void CreateCanvas()
     {
-        Debug.Log("🔍 创建 Canvas");
-
         GameObject canvasObj = new GameObject("UICanvas");
         canvasObj.transform.SetParent(transform);
 
@@ -306,7 +288,6 @@ public class UIController : MonoBehaviour
             canvasObj.transform.position = cameraPos + cameraForward * distanceFromCamera;
             canvasObj.transform.LookAt(cameraPos);
             canvasObj.transform.Rotate(0, 180, 0);
-            Debug.Log($"✅ Canvas 位置: {canvasObj.transform.position}");
         }
 
         // 设置 Canvas 尺寸和缩放
@@ -323,15 +304,11 @@ public class UIController : MonoBehaviour
         if (raycasterType != null)
         {
             canvasObj.AddComponent(raycasterType);
-            Debug.Log("✅ 添加了 TrackedDeviceGraphicRaycaster");
         }
         else
         {
             canvasObj.AddComponent<GraphicRaycaster>();
-            Debug.LogWarning("⚠️ 使用标准 GraphicRaycaster");
         }
-
-        Debug.Log($"✅ Canvas 创建完成");
     }
 
     /// <summary>
@@ -339,8 +316,6 @@ public class UIController : MonoBehaviour
     /// </summary>
     private void CreateModalWindow()
     {
-        Debug.Log("🔍 创建 ModalWindow");
-
         modalWindow = new GameObject("ModalWindow");
         modalWindow.transform.SetParent(canvas.transform, false);
 
@@ -352,8 +327,6 @@ public class UIController : MonoBehaviour
 
         Image bgImage = modalWindow.AddComponent<Image>();
         bgImage.color = new Color(0.15f, 0.15f, 0.15f, 1f); // 深灰色不透明
-
-        Debug.Log($"✅ ModalWindow 创建完成，Active: {modalWindow.activeSelf}");
     }
 
     /// <summary>
@@ -361,8 +334,6 @@ public class UIController : MonoBehaviour
     /// </summary>
     private void CreateTitle()
     {
-        Debug.Log("🔍 创建 Title");
-
         GameObject titleObj = new GameObject("Title");
         titleObj.transform.SetParent(modalWindow.transform, false);
 
@@ -393,8 +364,6 @@ public class UIController : MonoBehaviour
         titleText.alignment = TextAnchor.MiddleCenter;
         titleText.color = Color.white;
         titleText.fontStyle = FontStyle.Bold;
-
-        Debug.Log($"✅ Title 创建完成，文本: {titleText.text}，字体: {titleText.font?.name}");
     }
 
     /// <summary>
@@ -402,11 +371,8 @@ public class UIController : MonoBehaviour
     /// </summary>
     private void CreateButtonsContainer()
     {
-        Debug.Log("🔍 创建 ButtonsContainer");
-
         if (modalWindow == null)
         {
-            Debug.LogError("❌ modalWindow 为空！");
             return;
         }
 
@@ -430,8 +396,6 @@ public class UIController : MonoBehaviour
         layout.childControlHeight = false;
         layout.childForceExpandWidth = (buttonWidth == 0);
         layout.childForceExpandHeight = false;
-
-        Debug.Log($"✅ ButtonsContainer 创建完成，Parent: {containerObj.transform.parent.name}");
     }
 
     /// <summary>
@@ -440,8 +404,6 @@ public class UIController : MonoBehaviour
     private void CreateServerUrlInputField()
     {
         if (buttonsContainer == null) return;
-
-        Debug.Log("🔍 创建 Server URL InputField");
 
         // 创建输入框容器
         GameObject inputContainer = new GameObject("ServerUrlInputContainer");
@@ -462,13 +424,13 @@ public class UIController : MonoBehaviour
         inputRect.offsetMax = new Vector2(-10, -10);
 
         serverUrlInputField = inputFieldObj.AddComponent<InputField>();
-        serverUrlInputField.text = "https://localhost:5000/poseData";
+        serverUrlInputField.text = "https://localhost:5000";
 
         Image inputBg = inputFieldObj.AddComponent<Image>();
         inputBg.color = new Color(0.2f, 0.2f, 0.2f, 1f);
 
         serverUrlInputField.targetGraphic = inputBg;
-        serverUrlInputField.placeholder = CreatePlaceholder("输入服务器地址...");
+        serverUrlInputField.placeholder = CreatePlaceholder("输入基础地址 (如 https://IP:端口)");
 
         Text inputText = CreateTextComponent(inputFieldObj, "ServerUrlInputText");
         inputText.alignment = TextAnchor.MiddleLeft;
@@ -512,8 +474,6 @@ public class UIController : MonoBehaviour
         statusText.fontSize = 20;
         statusText.alignment = TextAnchor.MiddleCenter;
         statusText.color = Color.green;
-
-        Debug.Log("✅ Server URL InputField 创建完成");
     }
 
     // 创建占位符文本
@@ -563,7 +523,6 @@ public class UIController : MonoBehaviour
     /// </summary>
     private void AddDefaultButtons()
     {
-        Debug.Log("🔍 添加默认按钮");
         AddButton("CONFIRM", OnConfirmClicked, new Color(0.2f, 0.6f, 1f));
         AddButton("CANCEL", OnCancelClicked, new Color(0.7f, 0.7f, 0.7f));
         AddButton("APPLY", OnApplyClicked, new Color(0.3f, 0.7f, 0.3f));
@@ -576,11 +535,8 @@ public class UIController : MonoBehaviour
     {
         if (buttonsContainer == null)
         {
-            Debug.LogError("❌ buttonsContainer 为空！");
             return null;
         }
-
-        Debug.Log($"🔍 创建按钮: {buttonText}");
 
         GameObject buttonObj = new GameObject($"Button_{buttonText}");
         buttonObj.transform.SetParent(buttonsContainer, false);
@@ -620,8 +576,6 @@ public class UIController : MonoBehaviour
 
         bgImage.color = normalColor;
 
-        Debug.Log($"🔍 按钮 {buttonText} - targetGraphic: {button.targetGraphic != null}, transition: {button.transition}, 尺寸: {rect.sizeDelta}");
-
         // 添加 EventTrigger 来处理 hover 事件（额外的视觉反馈）
         EventTrigger trigger = buttonObj.AddComponent<EventTrigger>();
 
@@ -658,8 +612,6 @@ public class UIController : MonoBehaviour
         button.onClick.AddListener(onClick);
         buttons.Add(button);
 
-        Debug.Log($"✅ 按钮创建完成: {buttonText}");
-
         return button;
     }
 
@@ -685,20 +637,29 @@ public class UIController : MonoBehaviour
     // 确认服务器URL按钮点击事件
     private void OnConfirmServerUrl()
     {
-        if (dataTracking != null && serverUrlInputField != null)
+        if (serverUrlInputField != null)
         {
-            string newUrl = serverUrlInputField.text.Trim();
-            
-            if (!string.IsNullOrEmpty(newUrl))
+            string newBaseUrl = serverUrlInputField.text.Trim();
+
+            if (!string.IsNullOrEmpty(newBaseUrl))
             {
-                // 验证URL格式
-                if (IsValidUrl(newUrl))
+                // 自动添加协议（如果没有的话）
+                if (!newBaseUrl.StartsWith("http://") && !newBaseUrl.StartsWith("https://"))
                 {
-                    // 更新DataTracking中的serverUrl
-                    dataTracking.serverUrl = newUrl;
-                    
+                    newBaseUrl = "https://" + newBaseUrl;
+                }
+
+                // 验证URL格式
+                if (IsValidUrl(newBaseUrl))
+                {
+                    // 移除末尾的斜杠
+                    serverBaseUrl = newBaseUrl.TrimEnd('/');
+
+                    // 更新输入框（规范化后的 URL）
+                    serverUrlInputField.text = serverBaseUrl;
+
                     // 保存到PlayerPrefs以便下次启动时使用
-                    PlayerPrefs.SetString("ServerUrl", newUrl);
+                    PlayerPrefs.SetString("ServerBaseUrl", serverBaseUrl);
                     PlayerPrefs.Save();
 
                     // 更新状态文本
@@ -708,7 +669,9 @@ public class UIController : MonoBehaviour
                         statusText.color = Color.green;
                     }
 
-                    Debug.Log($"服务器地址已更新为: {newUrl}");
+                    Debug.Log($"✅ 服务器基础地址已更新为: {serverBaseUrl}");
+                    Debug.Log($"   - VR 数据 URL: {serverBaseUrl}/poseData");
+                    Debug.Log($"   - 消息 URL: {serverBaseUrl}/msg");
                 }
                 else
                 {
@@ -763,7 +726,6 @@ public class UIController : MonoBehaviour
             {
                 titleText.text = title;
             }
-            Debug.Log($"✅ 显示模态窗口: {title}");
         }
     }
 
@@ -772,7 +734,6 @@ public class UIController : MonoBehaviour
         if (modalWindow != null)
         {
             modalWindow.SetActive(false);
-            Debug.Log("✅ 隐藏模态窗口");
         }
     }
 

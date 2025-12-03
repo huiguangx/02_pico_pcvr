@@ -11,8 +11,9 @@ namespace DataTracking
     public class HapticMessageReceiver : MonoBehaviour
     {
         [Header("服务器配置")]
-        [Tooltip("消息接口 URL")]
-        public string messageApiUrl = "https://localhost:5000/msg";
+        [Tooltip("消息接口完整 URL (从 UIController 自动获取)")]
+        [SerializeField]
+        private string messageApiUrl = "https://localhost:5000/msg"; // 仅显示，实际从 UIController 获取
 
         [Tooltip("轮询间隔（秒）")]
         [Range(0.05f, 5f)]
@@ -27,9 +28,26 @@ namespace DataTracking
 
         private float lastPollTime = 0f;
         private bool isPolling = false;
+        private UIController uiController;
+
+        private void Awake()
+        {
+            // 获取 UIController 引用
+            uiController = UnityEngine.Object.FindObjectOfType<UIController>();
+            if (uiController == null)
+            {
+                Debug.LogWarning("⚠️ 未找到 UIController，将使用默认 messageApiUrl");
+            }
+        }
 
         private void Update()
         {
+            // 更新 Inspector 显示的 URL（从 UIController 同步）
+            if (uiController != null)
+            {
+                messageApiUrl = uiController.serverBaseUrl + "/msg";
+            }
+
             if (!enableMessageReceiving) return;
 
             // 定期轮询消息
@@ -50,16 +68,23 @@ namespace DataTracking
             // ============ 假数据测试 ============
             // 取消下面的注释来测试震动功能（不调用真实服务器）
             // 测试完成后重新注释掉即可
-            
+
             // string fakeJson = "{\"id\":\"vibrate\",\"data\":{\"side\":\"right\",\"intensity\":0.8,\"duration\":0.3}}";
             // Debug.Log("📨 [假数据测试] 收到消息: " + fakeJson);
             // ProcessMessage(fakeJson);
             // isPolling = false;
             // yield break;
-            
+
             // ===================================
 
-            var request = UnityWebRequest.Get(messageApiUrl);
+            // 从 UIController 获取基础地址并拼接完整 URL
+            string url = messageApiUrl; // 默认值
+            if (uiController != null)
+            {
+                url = uiController.serverBaseUrl + "/msg";
+            }
+
+            var request = UnityWebRequest.Get(url);
             request.certificateHandler = new CustomCertificateHandler();
             request.disposeCertificateHandlerOnDispose = true;
             request.timeout = 2; // 2秒超时

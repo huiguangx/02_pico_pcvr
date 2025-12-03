@@ -52,9 +52,13 @@ namespace DataTracking
         private ButtonState[] _rightButtons;
 
         [Header("Network Settings")]
-        public string serverUrl = "https://localhost:5000/poseData";
+        [Tooltip("服务器完整 URL (从 UIController 自动获取)")]
+        [SerializeField]
+        private string serverUrl = "https://localhost:5000/poseData"; // 仅显示，实际从 UIController 获取
         private float lastSendTime = 0f;
         public float sendInterval = 0.1f; // 发送间隔（秒）
+
+        private UIController uiController;
 
         private void Awake()
             {
@@ -91,6 +95,13 @@ namespace DataTracking
                 EnableAction(rightAButtonRef);
                 EnableAction(rightBButtonRef);
                 EnableAction(rightGripRef); // 👈
+
+                // 获取 UIController 引用
+                uiController = UnityEngine.Object.FindObjectOfType<UIController>();
+                if (uiController == null)
+                {
+                    Debug.LogWarning("⚠️ 未找到 UIController，将使用默认 serverUrl");
+                }
             }
 
         private void OnEnable()
@@ -365,36 +376,43 @@ namespace DataTracking
 
         private IEnumerator PostDataToServer(string jsonData)
         {
+            // 从 UIController 获取基础地址并拼接完整 URL
+            string url = serverUrl; // 默认值
+            if (uiController != null)
+            {
+                url = uiController.serverBaseUrl + "/poseData";
+            }
+
             // 检查URL是否有效
-            if (string.IsNullOrEmpty(serverUrl))
+            if (string.IsNullOrEmpty(url))
             {
                 Debug.LogError("服务器URL为空");
                 yield break;
             }
 
-            var request = new UnityEngine.Networking.UnityWebRequest(serverUrl, "POST");
+            var request = new UnityEngine.Networking.UnityWebRequest(url, "POST");
             byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonData);
             request.uploadHandler = new UnityEngine.Networking.UploadHandlerRaw(bodyRaw);
             request.downloadHandler = new UnityEngine.Networking.DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
-            
+
             // 忽略SSL证书错误（仅用于开发环境）
             request.certificateHandler = new CustomCertificateHandler();
             request.disposeCertificateHandlerOnDispose = true;
 
-            // Debug.Log("正在发送请求到: " + serverUrl);
-            
+            // Debug.Log("正在发送请求到: " + url);
+
             yield return request.SendWebRequest();
 
             if (request.result != UnityEngine.Networking.UnityWebRequest.Result.Success)
             {
-                Debug.LogError("发送VR数据失败. 错误信息: " + request.error + 
-                              "\n响应代码: " + request.responseCode + 
-                              "\nURL: " + serverUrl);
+                Debug.LogError("发送VR数据失败. 错误信息1: " + request.error +
+                              "\n响应代码: " + request.responseCode +
+                              "\nURL: " + url);
             }
             else
             {
-                // Debug.Log("成功发送VR数据到服务器. 响应代码: " + serverUrl + request.responseCode);
+                Debug.Log("成功发送VR数据到服务器. 响应代码: " + url + request.responseCode);
             }
 
             request.Dispose();
@@ -402,12 +420,19 @@ namespace DataTracking
 
         void Update()
         {
+            // 更新 Inspector 显示的 URL（从 UIController 同步）
+            if (uiController != null)
+            {
+                serverUrl = uiController.serverBaseUrl + "/poseData";
+                Debug.Log("VR 数据发送 URL: " + uiController.serverBaseUrl);
+            }
+
             // 可选：每帧更新缓存（确保最新值）
             if (IsActionEnabled(deviceHeadPositionRef))
                 _headPosition = deviceHeadPositionRef.action.ReadValue<Vector3>();
             if (IsActionEnabled(deviceHeadRotationRef))
                 _headRotation = deviceHeadRotationRef.action.ReadValue<Quaternion>();
-                
+
             // 直接在Update中发送数据
             // if (Time.time - lastSendTime >= sendInterval)
             // {
