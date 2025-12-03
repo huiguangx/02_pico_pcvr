@@ -131,9 +131,22 @@ namespace DataTracking
             if (rightBButtonRef != null)
             {
                 var action = rightBButtonRef.action;
-                action.performed += _ => {
+                action.performed += ctx => {
                     _rightButtons[5].pressed = true;
                     _rightButtons[5].value = 1f;
+
+                    Debug.Log("🎮 B键按下！");
+
+                    // 简单直接的震动
+                    PXR_Input.SendHapticImpulse(
+                        PXR_Input.VibrateType.RightController,
+                        0.8f,   // 强度
+                        300,    // 时长 ms
+                        200     // 频率 Hz
+                    );
+
+                    // PCVR 兼容震动
+                    TriggerHapticForPCVR(ctx);
                 };
                 action.canceled += _ => {
                     _rightButtons[5].pressed = false;
@@ -217,6 +230,36 @@ namespace DataTracking
         {
             if (actionRef != null)
                 actionRef.action.performed += ctx => callback(ctx.ReadValue<Quaternion>());
+        }
+
+        /// <summary>
+        /// PCVR 模式震动支持
+        /// </summary>
+        private void TriggerHapticForPCVR(InputAction.CallbackContext ctx)
+        {
+            try
+            {
+                // 使用 Unity XR 标准 API（PCVR 兼容）
+                var xrDevices = new System.Collections.Generic.List<UnityEngine.XR.InputDevice>();
+                UnityEngine.XR.InputDevices.GetDevicesWithCharacteristics(
+                    UnityEngine.XR.InputDeviceCharacteristics.Controller |
+                    UnityEngine.XR.InputDeviceCharacteristics.Right,
+                    xrDevices
+                );
+
+                foreach (var device in xrDevices)
+                {
+                    if (device.TryGetHapticCapabilities(out var capabilities) && capabilities.supportsImpulse)
+                    {
+                        device.SendHapticImpulse(0, 0.8f, 0.3f);
+                        Debug.Log($"✅ PCVR 震动发送到: {device.name}");
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"⚠️ PCVR 震动失败: {e.Message}");
+            }
         }
 
         // --- Getters (fallback to cached values if action disabled) ---

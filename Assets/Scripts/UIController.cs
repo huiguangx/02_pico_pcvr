@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
+using DataTracking; // 添加DataTracking命名空间
 
 /// <summary>
 /// UI控制器 - 完全通过代码生成 UI，支持 XR 射线交互
@@ -12,13 +13,13 @@ public class UIController : MonoBehaviour
 {
     [Header("Canvas 配置")]
     [Tooltip("UI距离相机的距离")]
-    public float distanceFromCamera = 3f;
+    public float distanceFromCamera = 5f;
 
     [Tooltip("Canvas 宽度")]
-    public float canvasWidth = 900f;
+    public float canvasWidth = 300f;
 
     [Tooltip("Canvas 高度")]
-    public float canvasHeight = 600f;
+    public float canvasHeight = 300f;
 
     [Tooltip("Canvas 缩放（调整整体大小）")]
     public float canvasScale = 0.005f;
@@ -54,6 +55,12 @@ public class UIController : MonoBehaviour
     private float lastButtonHeight;
     private float lastButtonSpacing;
 
+    // 添加输入框相关字段
+    private InputField serverUrlInputField;
+    private Button confirmButton;
+    private Text statusText;
+    private DataTracking.DataTracking dataTracking;
+
     private void Awake()
     {
         Debug.Log("🔍 UIController Awake() 开始");
@@ -88,6 +95,21 @@ public class UIController : MonoBehaviour
         if (!showOnStart)
         {
             HideModal();
+        }
+        
+        // 获取DataTracking实例
+        dataTracking = FindObjectOfType<DataTracking.DataTracking>();
+        
+        // 初始化输入框
+        InitializeServerUrlInput();
+    }
+
+    // 初始化服务器URL输入框
+    private void InitializeServerUrlInput()
+    {
+        if (dataTracking != null && serverUrlInputField != null)
+        {
+            serverUrlInputField.text = dataTracking.serverUrl;
         }
     }
 
@@ -254,7 +276,10 @@ public class UIController : MonoBehaviour
         // 4. 创建按钮容器
         CreateButtonsContainer();
 
-        // 5. 添加默认按钮
+        // 5. 添加服务器URL输入框
+        CreateServerUrlInputField();
+
+        // 6. 添加默认按钮
         AddDefaultButtons();
 
         Debug.Log("✅ UI 系统创建完成");
@@ -410,6 +435,130 @@ public class UIController : MonoBehaviour
     }
 
     /// <summary>
+    /// 创建服务器URL输入框
+    /// </summary>
+    private void CreateServerUrlInputField()
+    {
+        if (buttonsContainer == null) return;
+
+        Debug.Log("🔍 创建 Server URL InputField");
+
+        // 创建输入框容器
+        GameObject inputContainer = new GameObject("ServerUrlInputContainer");
+        inputContainer.transform.SetParent(buttonsContainer, false);
+
+        RectTransform containerRect = inputContainer.AddComponent<RectTransform>();
+        containerRect.sizeDelta = new Vector2(0, 120);
+
+        // 创建输入框
+        GameObject inputFieldObj = new GameObject("ServerUrlInputField");
+        inputFieldObj.transform.SetParent(inputContainer.transform, false);
+
+        RectTransform inputRect = inputFieldObj.AddComponent<RectTransform>();
+        inputRect.anchorMin = Vector2.zero;
+        inputRect.anchorMax = new Vector2(0.7f, 1f);
+        inputRect.pivot = new Vector2(0, 0.5f);
+        inputRect.offsetMin = new Vector2(0, 10);
+        inputRect.offsetMax = new Vector2(-10, -10);
+
+        serverUrlInputField = inputFieldObj.AddComponent<InputField>();
+        serverUrlInputField.text = "https://localhost:5000/poseData";
+
+        Image inputBg = inputFieldObj.AddComponent<Image>();
+        inputBg.color = new Color(0.2f, 0.2f, 0.2f, 1f);
+
+        serverUrlInputField.targetGraphic = inputBg;
+        serverUrlInputField.placeholder = CreatePlaceholder("输入服务器地址...");
+
+        Text inputText = CreateTextComponent(inputFieldObj, "ServerUrlInputText");
+        inputText.alignment = TextAnchor.MiddleLeft;
+        serverUrlInputField.textComponent = inputText;
+
+        // 创建确认按钮
+        GameObject confirmBtnObj = new GameObject("ConfirmButton");
+        confirmBtnObj.transform.SetParent(inputContainer.transform, false);
+
+        RectTransform confirmRect = confirmBtnObj.AddComponent<RectTransform>();
+        confirmRect.anchorMin = new Vector2(0.7f, 0);
+        confirmRect.anchorMax = Vector2.one;
+        confirmRect.pivot = new Vector2(0.5f, 0.5f);
+        confirmRect.offsetMin = new Vector2(10, 10);
+        confirmRect.offsetMax = new Vector2(0, -10);
+
+        confirmButton = confirmBtnObj.AddComponent<Button>();
+
+        Image confirmBg = confirmBtnObj.AddComponent<Image>();
+        confirmBg.color = new Color(0.2f, 0.6f, 1f, 1f);
+        confirmButton.targetGraphic = confirmBg;
+
+        Text confirmText = CreateTextComponent(confirmBtnObj, "ConfirmButtonText");
+        confirmText.text = "确认";
+        confirmText.alignment = TextAnchor.MiddleCenter;
+
+        confirmButton.onClick.AddListener(OnConfirmServerUrl);
+
+        // 创建状态文本
+        GameObject statusObj = new GameObject("StatusText");
+        statusObj.transform.SetParent(inputContainer.transform, false);
+
+        RectTransform statusRect = statusObj.AddComponent<RectTransform>();
+        statusRect.anchorMin = new Vector2(0, 0);
+        statusRect.anchorMax = new Vector2(1, 0);
+        statusRect.pivot = new Vector2(0.5f, 0);
+        statusRect.offsetMin = new Vector2(0, -30);
+        statusRect.offsetMax = new Vector2(0, -10);
+
+        statusText = CreateTextComponent(statusObj, "StatusText");
+        statusText.fontSize = 20;
+        statusText.alignment = TextAnchor.MiddleCenter;
+        statusText.color = Color.green;
+
+        Debug.Log("✅ Server URL InputField 创建完成");
+    }
+
+    // 创建占位符文本
+    private Text CreatePlaceholder(string placeholderText)
+    {
+        GameObject placeholderObj = new GameObject("Placeholder");
+        placeholderObj.transform.SetParent(serverUrlInputField.transform, false);
+
+        RectTransform rect = placeholderObj.AddComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.sizeDelta = Vector2.zero;
+        rect.anchoredPosition = Vector2.zero;
+
+        Text placeholder = placeholderObj.AddComponent<Text>();
+        placeholder.text = placeholderText;
+        placeholder.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        placeholder.fontSize = 36;
+        placeholder.alignment = TextAnchor.MiddleLeft;
+        placeholder.color = new Color(0.7f, 0.7f, 0.7f, 0.5f);
+
+        return placeholder;
+    }
+
+    // 创建文本组件
+    private Text CreateTextComponent(GameObject parent, string name)
+    {
+        GameObject textObj = new GameObject(name);
+        textObj.transform.SetParent(parent.transform, false);
+
+        RectTransform textRect = textObj.AddComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.sizeDelta = Vector2.zero;
+        textRect.anchoredPosition = Vector2.zero;
+
+        Text text = textObj.AddComponent<Text>();
+        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        text.fontSize = 36;
+        text.color = Color.white;
+
+        return text;
+    }
+
+    /// <summary>
     /// 添加默认按钮
     /// </summary>
     private void AddDefaultButtons()
@@ -533,6 +682,78 @@ public class UIController : MonoBehaviour
         // buttonObj.transform.localScale = Vector3.one;
     }
 
+    // 确认服务器URL按钮点击事件
+    private void OnConfirmServerUrl()
+    {
+        if (dataTracking != null && serverUrlInputField != null)
+        {
+            string newUrl = serverUrlInputField.text.Trim();
+            
+            if (!string.IsNullOrEmpty(newUrl))
+            {
+                // 验证URL格式
+                if (IsValidUrl(newUrl))
+                {
+                    // 更新DataTracking中的serverUrl
+                    dataTracking.serverUrl = newUrl;
+                    
+                    // 保存到PlayerPrefs以便下次启动时使用
+                    PlayerPrefs.SetString("ServerUrl", newUrl);
+                    PlayerPrefs.Save();
+
+                    // 更新状态文本
+                    if (statusText != null)
+                    {
+                        statusText.text = "服务器地址已更新";
+                        statusText.color = Color.green;
+                    }
+
+                    Debug.Log($"服务器地址已更新为: {newUrl}");
+                }
+                else
+                {
+                    // URL格式无效
+                    if (statusText != null)
+                    {
+                        statusText.text = "URL格式无效";
+                        statusText.color = Color.red;
+                    }
+                }
+            }
+            else
+            {
+                // URL为空
+                if (statusText != null)
+                {
+                    statusText.text = "URL不能为空";
+                    statusText.color = Color.red;
+                }
+            }
+        }
+    }
+
+    // 验证URL格式
+    private bool IsValidUrl(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return false;
+
+        // 如果URL不包含协议，则自动添加https://
+        if (!url.StartsWith("http://") && !url.StartsWith("https://"))
+        {
+            url = "https://" + url;
+        }
+
+        try
+        {
+            var uri = new System.Uri(url);
+            return uri.Scheme == System.Uri.UriSchemeHttp || uri.Scheme == System.Uri.UriSchemeHttps;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public void ShowModal(string title = "VR UI Test Window")
     {
         if (modalWindow != null)
@@ -580,6 +801,11 @@ public class UIController : MonoBehaviour
             {
                 btn.onClick.RemoveAllListeners();
             }
+        }
+        
+        if (confirmButton != null)
+        {
+            confirmButton.onClick.RemoveListener(OnConfirmServerUrl);
         }
     }
 }
