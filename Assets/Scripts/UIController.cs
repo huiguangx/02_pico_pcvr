@@ -39,8 +39,8 @@ public class UIController : MonoBehaviour
     public bool showOnStart = true;
 
     [Header("服务器配置")]
-    [Tooltip("服务器基础地址 (如 https://192.168.1.100:5000)")]
-    public string serverBaseUrl = "https://localhost:5000";
+    [Tooltip("服务器基础地址 (如 192.168.1.100:5000 或 localhost:5000)")]
+    public string serverBaseUrl = "localhost:5000";
 
     // 内部引用
     private Canvas canvas;
@@ -424,13 +424,13 @@ public class UIController : MonoBehaviour
         inputRect.offsetMax = new Vector2(-10, -10);
 
         serverUrlInputField = inputFieldObj.AddComponent<InputField>();
-        serverUrlInputField.text = "https://localhost:5000";
+        serverUrlInputField.text = "localhost:5000";
 
         Image inputBg = inputFieldObj.AddComponent<Image>();
-        inputBg.color = new Color(0.2f, 0.2f, 0.2f, 1f);
+        inputBg.color = new Color(0.2f, 0.2f, 0.2f, 1f); // 改为浅色更明显
 
         serverUrlInputField.targetGraphic = inputBg;
-        serverUrlInputField.placeholder = CreatePlaceholder("输入基础地址 (如 https://IP:端口)");
+        serverUrlInputField.placeholder = CreatePlaceholder("输入 IP:端口 (如 192.168.1.100:5000)");
 
         Text inputText = CreateTextComponent(inputFieldObj, "ServerUrlInputText");
         inputText.alignment = TextAnchor.MiddleLeft;
@@ -643,17 +643,23 @@ public class UIController : MonoBehaviour
 
             if (!string.IsNullOrEmpty(newBaseUrl))
             {
-                // 自动添加协议（如果没有的话）
-                if (!newBaseUrl.StartsWith("http://") && !newBaseUrl.StartsWith("https://"))
+                // 移除协议部分（如果用户输入了的话）
+                if (newBaseUrl.StartsWith("https://"))
                 {
-                    newBaseUrl = "https://" + newBaseUrl;
+                    newBaseUrl = newBaseUrl.Substring(8);
+                }
+                else if (newBaseUrl.StartsWith("http://"))
+                {
+                    newBaseUrl = newBaseUrl.Substring(7);
                 }
 
-                // 验证URL格式
-                if (IsValidUrl(newBaseUrl))
+                // 移除末尾的斜杠
+                newBaseUrl = newBaseUrl.TrimEnd('/');
+
+                // 验证格式（简单检查是否包含冒号）
+                if (newBaseUrl.Contains(":") || newBaseUrl == "localhost")
                 {
-                    // 移除末尾的斜杠
-                    serverBaseUrl = newBaseUrl.TrimEnd('/');
+                    serverBaseUrl = newBaseUrl;
 
                     // 更新输入框（规范化后的 URL）
                     serverUrlInputField.text = serverBaseUrl;
@@ -670,15 +676,15 @@ public class UIController : MonoBehaviour
                     }
 
                     Debug.Log($"✅ 服务器基础地址已更新为: {serverBaseUrl}");
-                    Debug.Log($"   - VR 数据 URL: {serverBaseUrl}/poseData");
-                    Debug.Log($"   - 消息 URL: {serverBaseUrl}/msg");
+                    Debug.Log($"   - VR 数据 URL: https://{serverBaseUrl}/poseData");
+                    Debug.Log($"   - 消息 URL: https://{serverBaseUrl}/msg");
                 }
                 else
                 {
-                    // URL格式无效
+                    // 格式无效
                     if (statusText != null)
                     {
-                        statusText.text = "URL格式无效";
+                        statusText.text = "格式无效，应为 IP:端口";
                         statusText.color = Color.red;
                     }
                 }
@@ -688,7 +694,7 @@ public class UIController : MonoBehaviour
                 // URL为空
                 if (statusText != null)
                 {
-                    statusText.text = "URL不能为空";
+                    statusText.text = "地址不能为空";
                     statusText.color = Color.red;
                 }
             }

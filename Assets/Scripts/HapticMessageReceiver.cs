@@ -45,7 +45,7 @@ namespace DataTracking
             // 更新 Inspector 显示的 URL（从 UIController 同步）
             if (uiController != null)
             {
-                messageApiUrl = uiController.serverBaseUrl + "/msg";
+                messageApiUrl = "https://" + uiController.serverBaseUrl + "/msg";
             }
 
             if (!enableMessageReceiving) return;
@@ -81,7 +81,7 @@ namespace DataTracking
             string url = messageApiUrl; // 默认值
             if (uiController != null)
             {
-                url = uiController.serverBaseUrl + "/msg";
+                url = "https://" + uiController.serverBaseUrl + "/msg";
             }
 
             var request = UnityWebRequest.Get(url);

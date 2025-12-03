@@ -380,7 +380,7 @@ namespace DataTracking
             string url = serverUrl; // 默认值
             if (uiController != null)
             {
-                url = uiController.serverBaseUrl + "/poseData";
+                url = "https://" + uiController.serverBaseUrl + "/poseData";
             }
 
             // 检查URL是否有效
@@ -423,8 +423,7 @@ namespace DataTracking
             // 更新 Inspector 显示的 URL（从 UIController 同步）
             if (uiController != null)
             {
-                serverUrl = uiController.serverBaseUrl + "/poseData";
-                Debug.Log("VR 数据发送 URL: " + uiController.serverBaseUrl);
+                serverUrl = "https://" + uiController.serverBaseUrl + "/poseData";
             }
 
             // 可选：每帧更新缓存（确保最新值）
