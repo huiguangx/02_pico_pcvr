@@ -376,13 +376,13 @@ namespace DataTracking
 
         private IEnumerator PostDataToServer(string jsonData)
         {
+            
             // 从 UIController 获取基础地址并拼接完整 URL
             string url = serverUrl; // 默认值
             if (uiController != null)
             {
                 url = "https://" + uiController.serverBaseUrl + "/poseData";
             }
-
             // 检查URL是否有效
             if (string.IsNullOrEmpty(url))
             {
@@ -412,7 +412,7 @@ namespace DataTracking
             }
             else
             {
-                Debug.Log("成功发送VR数据到服务器. 响应代码: " + url + request.responseCode);
+                Debug.Log("成功发送VR数据到服务器. 响应代码: " + '-' + url + '-' + request.responseCode);
             }
 
             request.Dispose();

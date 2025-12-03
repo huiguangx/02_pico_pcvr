@@ -410,7 +410,14 @@ public class UIController : MonoBehaviour
         inputContainer.transform.SetParent(buttonsContainer, false);
 
         RectTransform containerRect = inputContainer.AddComponent<RectTransform>();
-        containerRect.sizeDelta = new Vector2(0, 120);
+
+containerRect.sizeDelta = new Vector2(500f, 120f);
+
+        // 添加 LayoutElement 控制在垂直布局中的尺寸
+        LayoutElement layoutElement = inputContainer.AddComponent<LayoutElement>();
+        layoutElement.minHeight = 120;
+        layoutElement.preferredHeight = 120;
+        layoutElement.flexibleWidth = 1; // 自动填充宽度
 
         // 创建输入框
         GameObject inputFieldObj = new GameObject("ServerUrlInputField");
@@ -420,20 +427,21 @@ public class UIController : MonoBehaviour
         inputRect.anchorMin = Vector2.zero;
         inputRect.anchorMax = new Vector2(0.7f, 1f);
         inputRect.pivot = new Vector2(0, 0.5f);
-        inputRect.offsetMin = new Vector2(0, 10);
+        inputRect.offsetMin = new Vector2(10, 10);  // 增加左右内边距
         inputRect.offsetMax = new Vector2(-10, -10);
 
         serverUrlInputField = inputFieldObj.AddComponent<InputField>();
         serverUrlInputField.text = "localhost:5000";
 
         Image inputBg = inputFieldObj.AddComponent<Image>();
-        inputBg.color = new Color(0.2f, 0.2f, 0.2f, 1f); // 改为浅色更明显
+        inputBg.color = new Color(0.3f, 0.3f, 0.3f, 1f); // 浅灰色背景
 
         serverUrlInputField.targetGraphic = inputBg;
         serverUrlInputField.placeholder = CreatePlaceholder("输入 IP:端口 (如 192.168.1.100:5000)");
 
         Text inputText = CreateTextComponent(inputFieldObj, "ServerUrlInputText");
         inputText.alignment = TextAnchor.MiddleLeft;
+        inputText.fontSize = 32;
         serverUrlInputField.textComponent = inputText;
 
         // 创建确认按钮
@@ -445,7 +453,7 @@ public class UIController : MonoBehaviour
         confirmRect.anchorMax = Vector2.one;
         confirmRect.pivot = new Vector2(0.5f, 0.5f);
         confirmRect.offsetMin = new Vector2(10, 10);
-        confirmRect.offsetMax = new Vector2(0, -10);
+        confirmRect.offsetMax = new Vector2(-10, -10);
 
         confirmButton = confirmBtnObj.AddComponent<Button>();
 
@@ -455,11 +463,12 @@ public class UIController : MonoBehaviour
 
         Text confirmText = CreateTextComponent(confirmBtnObj, "ConfirmButtonText");
         confirmText.text = "确认";
+        confirmText.fontSize = 32;
         confirmText.alignment = TextAnchor.MiddleCenter;
 
         confirmButton.onClick.AddListener(OnConfirmServerUrl);
 
-        // 创建状态文本
+        // 创建状态文本（放在容器下方）
         GameObject statusObj = new GameObject("StatusText");
         statusObj.transform.SetParent(inputContainer.transform, false);
 
@@ -467,13 +476,14 @@ public class UIController : MonoBehaviour
         statusRect.anchorMin = new Vector2(0, 0);
         statusRect.anchorMax = new Vector2(1, 0);
         statusRect.pivot = new Vector2(0.5f, 0);
-        statusRect.offsetMin = new Vector2(0, -30);
-        statusRect.offsetMax = new Vector2(0, -10);
+        statusRect.offsetMin = new Vector2(10, -35);
+        statusRect.offsetMax = new Vector2(-10, -5);
 
         statusText = CreateTextComponent(statusObj, "StatusText");
-        statusText.fontSize = 20;
+        statusText.fontSize = 24;
         statusText.alignment = TextAnchor.MiddleCenter;
         statusText.color = Color.green;
+        statusText.text = "";
     }
 
     // 创建占位符文本
