@@ -83,7 +83,7 @@ namespace DataTracking
                 // 只在非超时错误时记录（避免日志刷屏）
                 if (verboseLogging)
                 {
-                    Debug.LogWarning($"⚠️ 消息接收失败: {request.error}");
+                    Debug.LogWarning($"⚠️ 消息接收失败 {request.error}");
                 }
             }
 

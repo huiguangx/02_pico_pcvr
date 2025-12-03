@@ -234,7 +234,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   distanceFromCamera: 3
-  canvasWidth: 1500
+  canvasWidth: 900
   canvasHeight: 900
   canvasScale: 0.005
   buttonWidth: 0
@@ -251,6 +251,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1495728733}
   - component: {fileID: 1495728732}
+  - component: {fileID: 1495728734}
   m_Layer: 0
   m_Name: DataTracking
   m_TagString: Untagged
@@ -303,6 +304,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1495728734
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1495728731}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45a05a6ba087c8b479f0693849e39cc0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  messageApiUrl: https://localhost:5000/msg
+  pollInterval: 0.1
+  enableMessageReceiving: 1
+  verboseLogging: 0
 --- !u!1001 &1571957534
 PrefabInstance:
   m_ObjectHideFlags: 0
